@@ -41,5 +41,11 @@ TagManager:
   - name: Default
     uniqueID: 0
     locked: 0
+  - name: StaticTarget
+    uniqueID: 1456401241
+    locked: 0
+  - name: Can
+    uniqueID: 3554045105
+    locked: 0
   m_RenderingLayers:
   - Default

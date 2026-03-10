@@ -13,43 +13,109 @@ public class TargetSpawner : MonoBehaviour
     public Transform topLeft;
     public Transform topRight;
 
+    public float roundLength = 35f;
+    private bool spawningStopped = false;
+
+    public int maxToughTargetsOnScreen = 3;
     public float spawnInterval = 1.25f;
+    public int maxTargetsOnScreen = 6;
+
+    public bool spawningStarted = false;
+
     private float timer;
+    private float gameTime;
 
     void Start()
     {
-        SpawnStaticTarget();
+        SpawnStarterTarget();
     }
 
     void Update()
     {
+        if (!spawningStarted)
+            return;
+
+        if (GameManager.Instance != null && (GameManager.Instance.gameOver || GameManager.Instance.hasWon))
+            return;
+
+        gameTime += Time.deltaTime;
         timer -= Time.deltaTime;
 
-        if (timer <= 0f)
+        if (!spawningStopped && gameTime >= roundLength)
         {
-            SpawnRandomTarget();
+            spawningStopped = true;
+        }
+
+        if (!spawningStopped && timer <= 0f)
+        {
+            int currentTargets = FindObjectsByType<TargetBase>(FindObjectsSortMode.None).Length;
+
+            if (currentTargets < maxTargetsOnScreen)
+            {
+                SpawnByPhase();
+            }
+
             timer = spawnInterval;
+        }
+
+        if (spawningStopped)
+        {
+            int currentTargets = FindObjectsByType<TargetBase>(FindObjectsSortMode.None).Length;
+
+            if (currentTargets == 0)
+            {
+                if (GameManager.Instance != null)
+                {
+                    GameManager.Instance.TriggerWin();
+                }
+            }
         }
     }
 
-    void SpawnRandomTarget()
+    public void BeginSpawning()
     {
-        int roll = Random.Range(0, 4);
+        spawningStarted = true;
+        timer = 0f;
+    }
 
-        switch (roll)
+    void SpawnStarterTarget()
+    {
+        Vector3 pos = new Vector3(0f, 1.5f, 0f);
+        GameObject obj = Instantiate(staticTargetPrefab, pos, Quaternion.identity);
+
+        StaticTarget starter = obj.GetComponent<StaticTarget>();
+        if (starter != null)
         {
-            case 0:
-                SpawnStaticTarget();
-                break;
-            case 1:
-                SpawnToughTarget();
-                break;
-            case 2:
-                SpawnBombTarget();
-                break;
-            case 3:
-                SpawnDroneTarget();
-                break;
+            starter.isStarterTarget = true;
+        }
+    }
+
+    void SpawnByPhase()
+    {
+        if (gameTime < 8f)
+        {
+            SpawnStaticTarget();
+        }
+        else if (gameTime < 16f)
+        {
+            int roll = Random.Range(0, 2);
+            if (roll == 0) SpawnStaticTarget();
+            else SpawnToughTarget();
+        }
+        else if (gameTime < 28f)
+        {
+            int roll = Random.Range(0, 3);
+            if (roll == 0) SpawnStaticTarget();
+            else if (roll == 1) SpawnToughTarget();
+            else SpawnBombTarget();
+        }
+        else
+        {
+            int roll = Random.Range(0, 4);
+            if (roll == 0) SpawnStaticTarget();
+            else if (roll == 1) SpawnToughTarget();
+            else if (roll == 2) SpawnBombTarget();
+            else SpawnDroneTarget();
         }
     }
 
@@ -61,6 +127,9 @@ public class TargetSpawner : MonoBehaviour
 
     void SpawnToughTarget()
     {
+        if (CountTargetsOfType<ToughTarget>() >= maxToughTargetsOnScreen)
+            return;
+
         Transform spawn = GetRandomBottomSpawn();
         GameObject obj = Instantiate(toughTargetPrefab, spawn.position, Quaternion.identity);
 
@@ -68,6 +137,7 @@ public class TargetSpawner : MonoBehaviour
         if (rb != null)
         {
             Vector2 force = new Vector2(Random.Range(-1.5f, 1.5f), Random.Range(7f, 9f));
+            rb.linearVelocity = Vector2.zero;
             rb.AddForce(force, ForceMode2D.Impulse);
         }
     }
@@ -81,6 +151,7 @@ public class TargetSpawner : MonoBehaviour
         if (rb != null)
         {
             Vector2 force = new Vector2(Random.Range(-2f, 2f), Random.Range(8f, 11f));
+            rb.linearVelocity = Vector2.zero;
             rb.AddForce(force, ForceMode2D.Impulse);
         }
     }
@@ -98,5 +169,10 @@ public class TargetSpawner : MonoBehaviour
         if (roll == 0) return bottomLeft;
         if (roll == 1) return bottomMiddle;
         return bottomRight;
+    }
+
+    int CountTargetsOfType<T>() where T : TargetBase
+    {
+        return FindObjectsByType<T>(FindObjectsSortMode.None).Length;
     }
 }

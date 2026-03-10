@@ -7,6 +7,8 @@ public class GunController : MonoBehaviour
     public float shootRange = 100f;
     public LayerMask shootLayer;
     public GameObject muzzleFlashPrefab;
+    public AudioSource audioSource;
+    public AudioClip gunshotSFX;
 
     void Update()
     {
@@ -28,6 +30,17 @@ public class GunController : MonoBehaviour
         if (muzzleFlashPrefab != null)
         {
             Instantiate(muzzleFlashPrefab, barrelTip.position, Quaternion.identity);
+        }
+
+        CameraShake shake = Camera.main.GetComponent<CameraShake>();
+        if (shake != null)
+        {
+            shake.Shake(0.1f, 0.1f);
+        }
+
+        if (audioSource != null && gunshotSFX != null)
+        {
+            audioSource.PlayOneShot(gunshotSFX);
         }
 
         if (hit.collider != null)
